@@ -136,4 +136,27 @@ else:
         sess.run(train_step,feed_dict={x: batch_x, y_: batch_y, keep_prob: 0.5})
 
     print ("FINALIZADO training")
-        
+    
+    eje_x = np.arange(total_epoch/10)
+    array_training = np.asanyarray(resultados_accuracy_training)
+    array_validation = np.asanyarray(resultados_accuracy_validation)
+    array_loss_train = np.asanyarray(resultados_loss_train)
+
+    plt.figure(1)
+    linea_train, = plt.plot(eje_x,array_training[eje_x],label="train",linewidth=2)
+    linea_test, = plt.plot(eje_x,array_validation[eje_x],label="validation",linewidth=2)
+    plt.legend(bbox_to_anchor=(1, 1.02), loc='upper left', ncol=1)
+    plt.xlabel('epochs')
+    plt.ylabel('accuracy')
+    plt.show()
+
+
+    plt.figure(2)
+    linea_loss, = plt.plot(eje_x,array_loss_train[eje_x],label="loss",linewidth=2)
+    plt.legend(bbox_to_anchor=(1,1.02), loc='upper left', ncol=1)
+    plt.xlabel('epochs')
+    plt.ylabel('loss')
+    plt.show()
+
+    test_accuracy = sess.run( accuracy, feed_dict={x:X_test, y_: y_test, keep_prob: 1.0})
+    print("test accuracy %g"% test_accuracy)

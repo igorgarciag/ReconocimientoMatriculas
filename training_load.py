@@ -67,3 +67,5 @@ def load():
 
         return X_train, X_val, X_test, y_train, y_val, y_test
     else: generate_dataset()
+
+load()

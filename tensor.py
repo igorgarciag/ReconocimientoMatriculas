@@ -1,0 +1,8 @@
+import tensorflow as tf
+import numpy as np
+
+WINDOW_SHAPE = (64, 128)
+
+DIGITS = "0123456789"
+LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+CHARS = LETTERS + DIGITS
