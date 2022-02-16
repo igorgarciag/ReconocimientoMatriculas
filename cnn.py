@@ -90,73 +90,78 @@ resultados_accuracy_training = []
 resultados_accuracy_validation = []
 resultados_loss_train = []
 
-ckpt = tf.train.get_checkpoint_state("CNN_log/")
+"""
+checkpoint = tf.train.get_checkpoint_state("CNN_log/")
+if checkpoint and checkpoint.model_checkpoint_path:
 
-if ckpt and ckpt.model_checkpoint_path:
-    saver.restore(sess, ckpt.model_checkpoint_path)
+    print("Usando checkpoint...")
+    saver.restore(sess, checkpoint.model_checkpoint_path)
 
 else:
-    print("no se ha encontrado checkpoint")
-    X_train, X_val, X_test, y_train, y_val, y_test = dataset.load()
+"""
+print ("no se ha encontrado checkpoint")
 
-    X_train = X_train - np.mean(X_train, axis=0)
-    X_val = X_val - np.mean(X_val, axis=0)
-    X_test = X_test - np.mean(X_test, axis=0)
+X_train, X_val, X_test, y_train, y_val, y_test = dataset.load()
 
- # Bucle de iteraciones de entrenamiento
+X_train = X_train - np.mean(X_train, axis=0)
+X_val = X_val - np.mean(X_val, axis=0)
+X_test = X_test - np.mean(X_test, axis=0)
 
-    for i in range(total_epoch):
-        batch_x = X_train[indice:indice + batch_size]
-        batch_y = y_train[indice:indice + batch_size]
-        indice = indice + batch_size + 1
+# Bucle de iteraciones de entrenamiento
 
-        if indice > X_train.shape[0]:
-            indice = 0
-            X_train, y_train = shuffle(X_train, y_train, random_state=0)
+for i in range(total_epoch):
+    batch_x = X_train[indice:indice + batch_size]
+    batch_y = y_train[indice:indice + batch_size]
+    indice = indice + batch_size + 1
 
-        if i%10 == 0:
-            results_train = sess.run([accuracy,cross_entropy],feed_dict={x:batch_x,
-            y_: batch_y, keep_prob: 1.0})
-            train_validation = sess.run(accuracy,feed_dict={x:X_val, y_: y_val,
-            keep_prob: 1.0})
+    if indice > X_train.shape[0]:
+        indice = 0
+        X_train, y_train = shuffle(X_train, y_train, random_state=0)
 
-            train_accuracy = results_train[0]
-            train_loss = results_train[1]
+    if i%10 == 0:
+        results_train = sess.run([accuracy,cross_entropy],feed_dict={x:batch_x,
+        y_: batch_y, keep_prob: 1.0})
+        train_validation = sess.run(accuracy,feed_dict={x:X_val, y_: y_val,
+        keep_prob: 1.0})
 
-            resultados_accuracy_training.append(train_accuracy)
-            resultados_accuracy_validation.append(train_validation)
-            resultados_loss_train.append(train_loss)
+        train_accuracy = results_train[0]
+        train_loss = results_train[1]
 
-            print("step %d, training accuracy %g"%(i, train_accuracy))
-            print("step %d, validation accuracy %g"%(i, train_validation))
-            print("step %d, loss %g"%(i, train_loss))
+        resultados_accuracy_training.append(train_accuracy)
+        resultados_accuracy_validation.append(train_validation)
+        resultados_loss_train.append(train_loss)
 
-        saver.save(sess, 'CNN_log/model.ckpt', global_step=i+1)
+        print("step %d, training accuracy %g"%(i, train_accuracy))
+        print("step %d, validation accuracy %g"%(i, train_validation))
+        print("step %d, loss %g"%(i, train_loss))
 
-        sess.run(train_step,feed_dict={x: batch_x, y_: batch_y, keep_prob: 0.5})
+    saver.save(sess, 'CNN_log/model.ckpt', global_step=i+1)
 
-    print ("FINALIZADO training")
-    
-    eje_x = np.arange(total_epoch/10)
-    array_training = np.asanyarray(resultados_accuracy_training)
-    array_validation = np.asanyarray(resultados_accuracy_validation)
-    array_loss_train = np.asanyarray(resultados_loss_train)
+    sess.run(train_step,feed_dict={x: batch_x, y_: batch_y, keep_prob: 0.5})
 
-    plt.figure(1)
-    linea_train, = plt.plot(eje_x,array_training[eje_x],label="train",linewidth=2)
-    linea_test, = plt.plot(eje_x,array_validation[eje_x],label="validation",linewidth=2)
-    plt.legend(bbox_to_anchor=(1, 1.02), loc='upper left', ncol=1)
-    plt.xlabel('epochs')
-    plt.ylabel('accuracy')
-    plt.show()
+print ("FINALIZADO training")
+
+eje_x = np.arange(total_epoch/10, dtype=np.int8)
+array_training = np.asanyarray(resultados_accuracy_training)
+array_validation = np.asanyarray(resultados_accuracy_validation)
+array_loss_train = np.asanyarray(resultados_loss_train)
+
+plt.figure(1)
+linea_train, = plt.plot(eje_x,array_training[eje_x],label="train",linewidth=2)
+linea_test, = plt.plot(eje_x,array_validation[eje_x],label="validation",linewidth=2)
+plt.legend(bbox_to_anchor=(1, 1.02), loc='upper left', ncol=1)
+plt.xlabel('epochs')
+plt.ylabel('accuracy')
+plt.show()
+
+plt.figure(2)
+linea_loss, = plt.plot(eje_x,array_loss_train[eje_x],label="loss",linewidth=2)
+plt.legend(bbox_to_anchor=(1,1.02), loc='upper left', ncol=1)
+plt.xlabel('epochs')
+plt.ylabel('loss')
+plt.show()
 
 
-    plt.figure(2)
-    linea_loss, = plt.plot(eje_x,array_loss_train[eje_x],label="loss",linewidth=2)
-    plt.legend(bbox_to_anchor=(1,1.02), loc='upper left', ncol=1)
-    plt.xlabel('epochs')
-    plt.ylabel('loss')
-    plt.show()
-
-    test_accuracy = sess.run( accuracy, feed_dict={x:X_test, y_: y_test, keep_prob: 1.0})
-    print("test accuracy %g"% test_accuracy)
+# Calcular precisión para el subconjunto de test
+test_accuracy = sess.run( accuracy, feed_dict={x:X_test, y_: y_test, keep_prob: 1.0})
+print("test accuracy %g"% test_accuracy)
