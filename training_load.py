@@ -1,11 +1,9 @@
 import os
 import numpy as np
-from skimage import io
+from skimage import io, color
 from skimage.transform import resize
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
-
-import tensorflow as tf
 
 #Esta funcion obtiene las imagenes de la carpeta de datos y las introduce en la matriz X
 def generate_dataset():
@@ -31,20 +29,18 @@ def generate_dataset():
             image = io.imread(filepath)
 
             #Reducir imagen a 32x32
-            reduce_image = resize(image,(32,32,1))
+            reduce_image = resize(image,(28,28,1))
+            print(reduce_image.shape)
 
             #Invertir imagen
             reduce_image = 1 - reduce_image
-            X.append(reduce_image.reshape(1024,1))
+            X.append(reduce_image.reshape(784,1))
 
             print(filename)
             cant=cant+1
 
-    print(cant)
-
     X = np.array(X)
     X = X.reshape(X.shape[:2])
-    print(X.shape)
 
     lb = preprocessing.LabelBinarizer()
     lb.fit(y)
@@ -66,4 +62,8 @@ def load():
         X_train, X_val, y_train, y_val = train_test_split(X_tr, y_tr, test_size=0.1, random_state=42)
 
         return X_train, X_val, X_test, y_train, y_val, y_test
-    else: generate_dataset()
+    else:
+        generate_dataset()
+        load()
+
+load()
