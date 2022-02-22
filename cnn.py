@@ -4,164 +4,82 @@ http://robromijnders.github.io/tensorflow_basic/
 LeNet-5 Yann Lecun
 
 """
-
 import tensorflow as tf
 import numpy as np
 from sklearn.utils import shuffle
-from keras import layers, models
+from keras import layers, models, losses
 import matplotlib.pyplot as plt
 
-import training_load as dataset
+import dataload as dataset
 
-def weight_variable(shape,name):
-    initial = tf.compat.v1.truncated_normal(shape, stddev=0.1)
-    return tf.Variable(initial,name=name)
+#definicion de valores predeterminados de datos de la red
+def generate_weight(shape, name):
+    initial = tf.compat.v1.truncated_normal(shape, stddev = 0.1)
+    return tf.Variable(initial, name = name)
 
-def bias_variable(shape,name):
-    initial = tf.constant(0.1, shape=shape)
-    return tf.Variable(initial,name=name)
+def generate_bias(shape, name):
+    initial = tf.constant(0.1, shape = shape)
+    return tf.Variable(initial, name = name)
 
-def conv2d(x, W):
-    return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
+def convolution2d(x, W, stride = (1, 1), padding = 'SAME'):
+    return tf.nn.conv2d(x, W, strides = [1, stride[0], stride[1], 1], padding = padding)
 
-def max_pool_2x2(x):
-    return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1], padding='SAME')
+def maxpooling2x2(x, ksize = (2, 2), stride = (2, 2)):
+    return tf.nn.max_pool(x, ksize = [1, ksize[0], ksize[1], 1], strides = [1, stride[0], stride[1], 1], padding = 'SAME')
 
-tf.compat.v1.reset_default_graph()
+#deshabilitar eager_execution y resetear grafo computacional
 tf.compat.v1.disable_eager_execution()
-sess = tf.compat.v1.Session()
+tf.compat.v1.reset_default_graph()
 
-x = tf.compat.v1.placeholder("float", shape=[None, 1024])
-y_ = tf.compat.v1.placeholder("float", shape=[None, 36])
+#declaracion de la sesion
+session = tf.compat.v1.Session()
 
-with tf.name_scope("Reshaping_data") as scope:
-    x_image = tf.reshape(x, [-1,32,32,1])
+#creacion de placeholders para imagenes y clases
+x = tf.compat.v1.placeholder("float", shape = [None, 1024])
+y = tf.compat.v1.placeholder("float", shape = [None, 36])
 
-with tf.name_scope("Conv1") as scope:
-    W_conv1 = weight_variable([5, 5, 1, 64],"Conv_Layer_1")
-    b_conv1 = bias_variable([64],"Bias_Conv_Layer_1")
-    h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
-    h_pool1 = max_pool_2x2(h_conv1)
+with tf.name_scope("Reshaping") as scope:
+    imagex = tf.reshape(x, [-1, 32, 32, 1])
 
-with tf.name_scope("Conv2") as scope:
-    W_conv2 = weight_variable([3, 3, 64, 64],"Conv_Layer_2")
-    b_conv2 = bias_variable([64],"Bias_Conv_Layer_2")
-    h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
-    h_pool2 = max_pool_2x2(h_conv2)
+with tf.name_scope("Convolution1") as socpe:
+    w_conv1 = generate_weight([5, 5, 1, 64], "ConvLayer01")
+    b_conv1 = generate_bias([64], "BiasConvLayer01")
+    h_conv1 = tf.nn.relu(convolution2d(imagex, w_conv1) + b_conv1)
+    pooling1 = maxpooling2x2(h_conv1)
 
-with tf.name_scope("Conv3") as scope:
-    W_conv3 = weight_variable([3, 3, 64, 64],"Conv_Layer_3")
-    b_conv3 = bias_variable([64],"Bias_Conv_Layer_3")
-    h_conv3 = tf.nn.relu(conv2d(h_pool2, W_conv3) + b_conv3)
-    h_pool3 = max_pool_2x2(h_conv3)
+with tf.name_scope("Convolution2") as socpe:
+    w_conv2 = generate_weight([3, 3, 1, 64], "ConvLayer02")
+    b_conv2 = generate_bias([64], "BiasConvLayer02")
+    h_conv2 = tf.nn.relu(convolution2d(imagex, w_conv2) + b_conv2)
+    pooling2 = maxpooling2x2(h_conv2)
 
-with tf.name_scope("Fully_Connected1") as scope:
-    W_fc1 = weight_variable([4 * 4 * 64, 1024],"Fully_Connected_layer_1")
-    b_fc1 = bias_variable([1024],"Bias_Fully_Connected1")
-    h_pool3_flat = tf.reshape(h_pool3, [-1, 4*4*64])
-    h_fc1 = tf.nn.relu(tf.matmul(h_pool3_flat, W_fc1) + b_fc1)
+with tf.name_scope("Dense1") as scope:
+    w_dense1 = generate_weight([4 * 4 * 64, 1024], "DenseLayer01")
+    b_dense1 = generate_bias([1064], "BiasDenseLayer01")
+    pooling2flatten = tf.reshape(pooling2, [-1, 4 * 4 * 64])
+    h_Dense1 = tf.nn.relu(tf.matmul(pooling2flatten, w_dense1) + b_dense1)
 
-with tf.name_scope("Fully_Connected2") as scope:
-    keep_prob = tf.compat.v1.placeholder("float")
-    h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
-    W_fc2 = weight_variable([1024, 36],"Fully_Connected_layer_2")
-    b_fc2 = bias_variable([36],"Bias_Fully_Connected2")
+with tf.name_scope("Dense2") as scope:
+    prob = tf.compat.v1.placeholder("float")
 
-with tf.name_scope("Final_Softmax") as scope:
-    y_conv=tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
+    #prevenir overfitting
+    h_dense1drop = tf.nn.dropout(h_Dense1, prob)
+
+    w_dense2 = generate_weight([4 * 4 * 64, 1024], "DenseLayer02")
+    b_dense2 = generate_bias([1064], "BiasDenseLayer02")
+
+with tf.name_scope("Softmax") as scope:
+    conv = tf.nn.softmax(tf.matmul(h_dense1drop, w_dense2) + b_dense2)
 
 with tf.name_scope("Entropy") as scope:
-    cross_entropy = -tf.reduce_sum(y_*tf.math.log(y_conv))
+    crossentropy = -tf.reduce_sum(y*tf.compat.v1.log(conv))
 
-with tf.name_scope("train") as scope:
-    train_step = tf.compat.v1.train.GradientDescentOptimizer(1e-4).minimize(cross_entropy)
+with tf.name_scope("Training") as scope:
+    trainingstep = tf.compat.v1.train.GradientDescentOptimizer(1e-4).minimize(crossentropy)
 
-with tf.name_scope("evaluating") as scope:
-    correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-    
-saver = tf.compat.v1.train.Saver()
+with tf.name_scope("Evaluating") as scope:
+    correctpredict = tf.equal(tf.argmax(conv, 1), tf.argmax(y, 1))
+    accuracy = tf.reduce_mean(tf.cast(correctpredict, "float"))
 
-sess.run(tf.compat.v1.global_variables_initializer())
-indice = 0
-batch_size = 300
-total_epoch = 450
-resultados_accuracy_training = []
-resultados_accuracy_validation = []
-resultados_loss_train = []
+save = tf.compat.v1.train.Saver()
 
-"""
-checkpoint = tf.train.get_checkpoint_state("CNN_log/")
-if checkpoint and checkpoint.model_checkpoint_path:
-
-    print("Usando checkpoint...")
-    saver.restore(sess, checkpoint.model_checkpoint_path)
-
-else:
-"""
-print ("no se ha encontrado checkpoint")
-
-X_train, X_val, X_test, y_train, y_val, y_test = dataset.load()
-
-X_train = X_train - np.mean(X_train, axis=0)
-X_val = X_val - np.mean(X_val, axis=0)
-X_test = X_test - np.mean(X_test, axis=0)
-
-# Bucle de iteraciones de entrenamiento
-
-for i in range(total_epoch):
-    batch_x = X_train[indice:indice + batch_size]
-    batch_y = y_train[indice:indice + batch_size]
-    indice = indice + batch_size + 1
-
-    if indice > X_train.shape[0]:
-        indice = 0
-        X_train, y_train = shuffle(X_train, y_train, random_state=0)
-
-    if i%10 == 0:
-        results_train = sess.run([accuracy,cross_entropy],feed_dict={x:batch_x,
-        y_: batch_y, keep_prob: 1.0})
-        train_validation = sess.run(accuracy,feed_dict={x:X_val, y_: y_val,
-        keep_prob: 1.0})
-
-        train_accuracy = results_train[0]
-        train_loss = results_train[1]
-
-        resultados_accuracy_training.append(train_accuracy)
-        resultados_accuracy_validation.append(train_validation)
-        resultados_loss_train.append(train_loss)
-
-        print("step %d, training accuracy %g"%(i, train_accuracy))
-        print("step %d, validation accuracy %g"%(i, train_validation))
-        print("step %d, loss %g"%(i, train_loss))
-
-    saver.save(sess, 'CNN_log/model.ckpt', global_step=i+1)
-
-    sess.run(train_step,feed_dict={x: batch_x, y_: batch_y, keep_prob: 0.5})
-
-print ("FINALIZADO training")
-
-eje_x = np.arange(total_epoch/10, dtype=np.int8)
-array_training = np.asanyarray(resultados_accuracy_training)
-array_validation = np.asanyarray(resultados_accuracy_validation)
-array_loss_train = np.asanyarray(resultados_loss_train)
-
-plt.figure(1)
-linea_train, = plt.plot(eje_x,array_training[eje_x],label="train",linewidth=2)
-linea_test, = plt.plot(eje_x,array_validation[eje_x],label="validation",linewidth=2)
-plt.legend(bbox_to_anchor=(1, 1.02), loc='upper left', ncol=1)
-plt.xlabel('epochs')
-plt.ylabel('accuracy')
-plt.show()
-
-plt.figure(2)
-linea_loss, = plt.plot(eje_x,array_loss_train[eje_x],label="loss",linewidth=2)
-plt.legend(bbox_to_anchor=(1,1.02), loc='upper left', ncol=1)
-plt.xlabel('epochs')
-plt.ylabel('loss')
-plt.show()
-
-
-# Calcular precisión para el subconjunto de test
-test_accuracy = sess.run( accuracy, feed_dict={x:X_test, y_: y_test, keep_prob: 1.0})
-print("test accuracy %g"% test_accuracy)
