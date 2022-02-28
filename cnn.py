@@ -1,14 +1,11 @@
 """
 http://robromijnders.github.io/tensorflow_basic/
 
-LeNet-5 Yann Lecun
-
 """
 import tensorflow as tf
-import numpy as np
 from sklearn.utils import shuffle
-from keras import layers, models, losses
 import matplotlib.pyplot as plt
+import numpy as np
 
 import dataload as dataset
 
@@ -35,8 +32,8 @@ tf.compat.v1.reset_default_graph()
 session = tf.compat.v1.Session()
 
 #creacion de placeholders para imagenes y clases
-x = tf.compat.v1.placeholder("float", shape = [None, 1024])
-y = tf.compat.v1.placeholder("float", shape = [None, 36])
+x = tf.compat.v1.placeholder("float", shape = [None, 1024], name='Input_data')
+y = tf.compat.v1.placeholder("float", shape = [None, 36], name= 'Ground_truth')
 
 with tf.name_scope("Reshaping") as scope:
     imagex = tf.reshape(x, [-1, 32, 32, 1])
@@ -48,14 +45,14 @@ with tf.name_scope("Convolution1") as socpe:
     pooling1 = maxpooling2x2(h_conv1)
 
 with tf.name_scope("Convolution2") as socpe:
-    w_conv2 = generate_weight([3, 3, 1, 64], "ConvLayer02")
+    w_conv2 = generate_weight([3, 3, 64, 64], "ConvLayer02")
     b_conv2 = generate_bias([64], "BiasConvLayer02")
-    h_conv2 = tf.nn.relu(convolution2d(imagex, w_conv2) + b_conv2)
+    h_conv2 = tf.nn.relu(convolution2d(pooling1, w_conv2) + b_conv2)
     pooling2 = maxpooling2x2(h_conv2)
 
 with tf.name_scope("Dense1") as scope:
     w_dense1 = generate_weight([4 * 4 * 64, 1024], "DenseLayer01")
-    b_dense1 = generate_bias([1064], "BiasDenseLayer01")
+    b_dense1 = generate_bias([1024], "BiasDenseLayer01")
     pooling2flatten = tf.reshape(pooling2, [-1, 4 * 4 * 64])
     h_Dense1 = tf.nn.relu(tf.matmul(pooling2flatten, w_dense1) + b_dense1)
 
@@ -65,17 +62,17 @@ with tf.name_scope("Dense2") as scope:
     #prevenir overfitting
     h_dense1drop = tf.nn.dropout(h_Dense1, prob)
 
-    w_dense2 = generate_weight([4 * 4 * 64, 1024], "DenseLayer02")
-    b_dense2 = generate_bias([1064], "BiasDenseLayer02")
+    w_dense2 = generate_weight([1024, 36], "DenseLayer02")
+    b_dense2 = generate_bias([36], "BiasDenseLayer02")
 
 with tf.name_scope("Softmax") as scope:
     conv = tf.nn.softmax(tf.matmul(h_dense1drop, w_dense2) + b_dense2)
 
 with tf.name_scope("Entropy") as scope:
-    crossentropy = -tf.reduce_sum(y*tf.compat.v1.log(conv))
+   crossentropy = -tf.reduce_sum(y*tf.compat.v1.log(conv))
 
 with tf.name_scope("Training") as scope:
-    trainingstep = tf.compat.v1.train.GradientDescentOptimizer(1e-4).minimize(crossentropy)
+    trainingstep = tf.compat.v1.train.AdamOptimizer(1e-4).minimize(crossentropy)
 
 with tf.name_scope("Evaluating") as scope:
     correctpredict = tf.equal(tf.argmax(conv, 1), tf.argmax(y, 1))
@@ -83,3 +80,29 @@ with tf.name_scope("Evaluating") as scope:
 
 save = tf.compat.v1.train.Saver()
 
+session.run(tf.compat.v1.global_variables_initializer())
+
+index = 0
+batch = 300
+epochs = 500
+
+x_train, x_test, y_train, y_test = dataset.load()
+
+for i in range(epochs):
+    batchx = x_train[index:index + batch]
+    batchy = y_train[index:index + batch] 
+
+    index = index + batch + 1
+
+    if index > x_train.shape[0]:
+        index = 0
+        x_train, y_train = shuffle(x_train, y_train, random_state=0)
+
+    if i%100 == 0:
+        result = session.run([accuracy, crossentropy], feed_dict={x: x_test, y: y_test, prob: 1.0})
+        acc = result[0]
+        print("Accuracy at step %s: %s" % (i, acc))
+
+    session.run(trainingstep, feed_dict={x:x_train[index], y: y_train[index], prob: 0.5})
+
+session.close()
