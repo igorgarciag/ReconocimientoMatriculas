@@ -50,11 +50,17 @@ with tf.name_scope("Convolution2") as socpe:
     h_conv2 = tf.nn.relu(convolution2d(pooling1, w_conv2) + b_conv2)
     pooling2 = maxpooling2x2(h_conv2)
 
+with tf.name_scope("Convolution3") as scope:
+    w_conv3 = generate_weight([3, 3, 64, 64], "ConvLayer03")
+    b_conv3 = generate_bias([64], "BiasConvLayer03")
+    h_conv3 = tf.nn.relu(convolution2d(pooling2, w_conv3) + b_conv3)
+    pooling3 = maxpooling2x2(h_conv3)
+
 with tf.name_scope("Dense1") as scope:
     w_dense1 = generate_weight([4 * 4 * 64, 1024], "DenseLayer01")
     b_dense1 = generate_bias([1024], "BiasDenseLayer01")
-    pooling2flatten = tf.reshape(pooling2, [-1, 4 * 4 * 64])
-    h_Dense1 = tf.nn.relu(tf.matmul(pooling2flatten, w_dense1) + b_dense1)
+    pooling3flatten = tf.reshape(pooling3, [-1, 4 * 4 * 64])
+    h_Dense1 = tf.nn.relu(tf.matmul(pooling3flatten, w_dense1) + b_dense1)
 
 with tf.name_scope("Dense2") as scope:
     prob = tf.compat.v1.placeholder("float")
@@ -82,27 +88,20 @@ save = tf.compat.v1.train.Saver()
 
 session.run(tf.compat.v1.global_variables_initializer())
 
-index = 0
-batch = 300
-epochs = 500
-
 x_train, x_test, y_train, y_test = dataset.load()
 
-for i in range(epochs):
-    batchx = x_train[index:index + batch]
-    batchy = y_train[index:index + batch] 
+epochs = 2000
+N = x_train.shape[0]
 
-    index = index + batch + 1
-
-    if index > x_train.shape[0]:
-        index = 0
-        x_train, y_train = shuffle(x_train, y_train, random_state=0)
-
+for i in range(0, epochs):
+    batch_ind = np.random.choice(N,300,replace=False)
+    
     if i%100 == 0:
-        result = session.run([accuracy, crossentropy], feed_dict={x: x_test, y: y_test, prob: 1.0})
+        result = session.run([accuracy, crossentropy], feed_dict={x: x_train[batch_ind], y: y_train[batch_ind], prob: 1.0})
         acc = result[0]
         print("Accuracy at step %s: %s" % (i, acc))
 
-    session.run(trainingstep, feed_dict={x:x_train[index], y: y_train[index], prob: 0.5})
+    
+    session.run(trainingstep, feed_dict={x:x_train[batch_ind], y: y_train[batch_ind], prob: 1.0})
 
 session.close()
