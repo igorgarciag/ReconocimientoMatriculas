@@ -1,11 +1,16 @@
 """
 http://robromijnders.github.io/tensorflow_basic/
 
+https://programmerclick.com/article/517651159/
+
 """
+from dataclasses import replace
+from sqlalchemy import false
 import tensorflow as tf
 from sklearn.utils import shuffle
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.metrics import ConfusionMatrixDisplay
 
 import dataload as dataset
 
@@ -56,13 +61,13 @@ with tf.name_scope("Convolution3") as scope:
     h_conv3 = tf.nn.relu(convolution2d(pooling2, w_conv3) + b_conv3)
     pooling3 = maxpooling2x2(h_conv3)
 
-with tf.name_scope("Dense1") as scope:
+with tf.name_scope("FullyConnected1") as scope:
     w_dense1 = generate_weight([4 * 4 * 64, 1024], "DenseLayer01")
     b_dense1 = generate_bias([1024], "BiasDenseLayer01")
     pooling3flatten = tf.reshape(pooling3, [-1, 4 * 4 * 64])
     h_Dense1 = tf.nn.relu(tf.matmul(pooling3flatten, w_dense1) + b_dense1)
 
-with tf.name_scope("Dense2") as scope:
+with tf.name_scope("FullyConnected2") as scope:
     prob = tf.compat.v1.placeholder("float")
 
     #prevenir overfitting
@@ -75,10 +80,11 @@ with tf.name_scope("Softmax") as scope:
     conv = tf.nn.softmax(tf.matmul(h_dense1drop, w_dense2) + b_dense2)
 
 with tf.name_scope("Entropy") as scope:
-   crossentropy = -tf.reduce_sum(y*tf.compat.v1.log(conv))
+   crossentropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=conv))
 
 with tf.name_scope("Training") as scope:
-    trainingstep = tf.compat.v1.train.AdamOptimizer(1e-4).minimize(crossentropy)
+    optimizer = tf.compat.v1.train.AdamOptimizer(1e-2)
+    trainingstep = optimizer.minimize(crossentropy)
 
 with tf.name_scope("Evaluating") as scope:
     correctpredict = tf.equal(tf.argmax(conv, 1), tf.argmax(y, 1))
@@ -90,18 +96,18 @@ session.run(tf.compat.v1.global_variables_initializer())
 
 x_train, x_test, y_train, y_test = dataset.load()
 
-epochs = 2000
 N = x_train.shape[0]
+epochs = 2000
+batch = 200
 
 for i in range(0, epochs):
-    batch_ind = np.random.choice(N,300,replace=False)
-    
+    batch_ind = np.random.choice(N, batch, replace = false)
+            
     if i%100 == 0:
         result = session.run([accuracy, crossentropy], feed_dict={x: x_train[batch_ind], y: y_train[batch_ind], prob: 1.0})
         acc = result[0]
-        print("Accuracy at step %s: %s" % (i, acc))
-
-    
-    session.run(trainingstep, feed_dict={x:x_train[batch_ind], y: y_train[batch_ind], prob: 1.0})
+        print("Step %s: Current training accuracy %s"%(i, acc))
+            
+    session.run(trainingstep, feed_dict={x: x_train[batch_ind], y: y_train[batch_ind], prob: 1.0})
 
 session.close()
