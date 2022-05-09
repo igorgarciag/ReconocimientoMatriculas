@@ -1,11 +1,11 @@
 import os
 import numpy as np
-from skimage import io, color
+from skimage import io
 from skimage.transform import resize
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 
-#Esta funcion obtiene las imagenes de la carpeta de datos y las introduce en la matriz X
+#Esta funcion obtiene las imagenes de la carpeta de datos y las introduce en la matriz de datos x, matriz de clases y 
 def generate_dataset():
 
     dirname = os.path.join(os.getcwd(), 'English/Img')
@@ -16,7 +16,7 @@ def generate_dataset():
     X = []
     y = []
 
-    print("leyendo imagenes de ", imgpath)
+    print("Reading images from ", imgpath)
 
     for root, dirnames, filenames in os.walk(imgpath):
         dirnames.sort()
@@ -30,17 +30,12 @@ def generate_dataset():
 
             #Reducir imagen a 32x32
             reduce_image = resize(image,(32,32,1))
-            
-            #Invertir imagen
-            reduce_image = 1 - reduce_image
-            
-            X.append(reduce_image.reshape(1024,1))
+            X.append(reduce_image)
 
             print(filename)
             cant=cant+1
 
     X = np.array(X)
-    X = X.reshape(X.shape[:2])
 
     lb = preprocessing.LabelBinarizer()
     lb.fit(y)
@@ -48,19 +43,16 @@ def generate_dataset():
 
     y = np.array(y, dtype=float)
 
-    np.savetxt('datax.txt', X)
-    np.savetxt('datay.txt', y)
+    return X, y
 
 def load():
-    if os.path.isfile('datax.txt') and os.path.isfile('datay.txt'):
-        X = np.loadtxt('datax.txt')
-        y = np.loadtxt('datay.txt')
-        print ("Data loaded: ", X.shape)
+    X, y = generate_dataset()
+    print("Data loaded, ", X.shape)  
 
-        x_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-        
+    X = X.astype(np.float32)
+    y = y.astype(np.float32)
 
-        return x_train, X_test, y_train, y_test
-    else:
-        generate_dataset()
-        load()
+    x_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    
+
+    return x_train, X_test, y_train, y_test
