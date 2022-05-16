@@ -22,7 +22,7 @@ def generate_dataset():
         dirnames.sort()
         
         for filename in filenames:
-            clas =  filename[3:filename.index('-')]
+            clas =  filename[3:6]
             y.append(float(clas))
             
             filepath = os.path.join(root, filename)
