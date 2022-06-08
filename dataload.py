@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 #Esta funcion obtiene las imagenes de la carpeta de datos y las introduce en la matriz de datos x, matriz de clases y 
 def generate_dataset():
 
-    dirname = os.path.join(os.getcwd(), 'English/Img')
+    dirname = os.path.join(os.getcwd(), 'dataset2/Img')
     imgpath = dirname + os.sep
 
     cant = 0
